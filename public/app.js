@@ -15,7 +15,34 @@
     if (/^(opus|sonnet|haiku|fable|mythos)-/.test(m)) m = "claude-" + m;
     return m;
   }
-  const PRESETS = ["claude-sonnet-4-5", "claude-opus-5-5"];
+  let PRESETS = ["claude-sonnet-4-5", "claude-opus-5-5"];
+  let modelsLoaded = false;
+
+  /** Ask Anthropic which models this key can use and fill the dropdown with them. */
+  async function loadModels() {
+    if (!Vault.isUnlocked() || modelsLoaded) return;
+    $("modelNote").textContent = "Loading the models your key can use…";
+    try {
+      const list = await Claude.listModels(Vault.get());
+      if (!list.length) throw new Error("No models returned");
+      modelsLoaded = true;
+      PRESETS = list.map((m) => m.id);
+      const pick = $("modelPick");
+      pick.innerHTML = "";
+      list.forEach((m) => pick.add(new Option(`${m.name} (${m.id})`, m.id)));
+      pick.add(new Option("Other (type the exact model ID)…", "custom"));
+      // keep the saved choice if the key has it, otherwise choose a Sonnet model (cheaper), else the newest
+      const saved = settings.model;
+      const chosen = PRESETS.includes(saved) ? saved : list.find((m) => /sonnet/i.test(m.id))?.id || list[0].id;
+      settings.model = chosen;
+      pick.value = chosen;
+      $("model").value = chosen;
+      $("modelCustomBox").hidden = true;
+      $("modelNote").textContent = `${list.length} models available on your key. Sonnet = fast & cheap, Opus = highest quality.`;
+    } catch (e) {
+      $("modelNote").textContent = `Couldn't load the model list: ${e.message}`;
+    }
+  }
 
   const settings = {
     get model() { try { return normalizeModel(localStorage.getItem("lps_model") || DEFAULT_MODEL); } catch { return DEFAULT_MODEL; } },
@@ -132,6 +159,7 @@
   async function smart() {
     if (!Vault.isUnlocked()) { openKeyDialog(); return; }
     touch();
+    await loadModels();
     const t = tpl();
     const colors = Object.fromEntries(roles.map((r) => [r, `${Colors.nameOf(color(r))} (${color(r)})`]));
     setBusy(true);
@@ -247,6 +275,7 @@
     $("model").value = m;
     $("modelCustomBox").hidden = PRESETS.includes(m);
     dlg.showModal();
+    loadModels();
     const first = dlg.querySelector("section:not([hidden]) input, div:not([hidden]) > label > input[type=password]");
     if (first) first.focus();
   }
@@ -272,6 +301,8 @@
     $("apiKey").value = $("pass1").value = $("pass2").value = "";
     touch();
     refreshKeyUI();
+    modelsLoaded = false;
+    loadModels();
   });
   $("unlockBtn").addEventListener("click", async () => {
     $("unlockBtn").disabled = true;
@@ -281,6 +312,7 @@
       $("unlockPass").value = "";
       touch();
       refreshKeyUI();
+      loadModels();
     } catch (e) {
       $("dlgError").textContent = e.message;
     } finally {

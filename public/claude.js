@@ -51,7 +51,7 @@
     content.push({ type: "text", text });
     return {
       model,
-      max_tokens: 16000,
+      max_tokens: 8192,
       system,
       // no forced tool_choice: newer models reject it. Claude is told to call the tool,
       // and if it answers in plain text instead we read the JSON from the text.
@@ -77,8 +77,9 @@
       const msg = body?.error?.message || `HTTP ${res.status}`;
       if (res.status === 401) throw new Error("The API key was rejected. Check it in Settings → API key.");
       if (res.status === 429) throw new Error("Rate limit or spend limit reached on your Anthropic account. Try again later.");
-      if ((res.status === 404 || res.status === 400) && /model/i.test(msg)) throw new Error(`Model "${args.model}" isn't available on your API key. Pick another model in ⚙ Settings.`);
-      throw new Error(msg);
+      // always show Anthropic's own message, so the real reason is visible
+      const hint = res.status === 404 && /model/i.test(msg) ? " → Open ⚙ Settings and pick a model from the list (it shows only models your key can use)." : "";
+      throw new Error(`${msg} (HTTP ${res.status})${hint}`);
     }
     const block = (body.content || []).find((b) => b.type === "tool_use" && b.name === "deliver_prompts");
     if (block) return { result: block.input, usage: body.usage };
@@ -95,5 +96,15 @@
     throw new Error("Claude did not return prompts. Try again.");
   }
 
-  window.Claude = { run, buildRequest };
+  /** Models this API key can use: [{ id, name }] (newest first). */
+  async function listModels(apiKey) {
+    const res = await fetch("https://api.anthropic.com/v1/models?limit=100", {
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`${body?.error?.message || "Could not load models"} (HTTP ${res.status})`);
+    return (body.data || []).map((m) => ({ id: m.id, name: m.display_name || m.id }));
+  }
+
+  window.Claude = { run, buildRequest, listModels };
 })();
