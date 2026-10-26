@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src https://api.anthropic.com; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Logo to Prompts Studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23151515'/%3E%3Ccircle cx='11' cy='16' r='5' fill='%23ff6a1f'/%3E%3Ccircle cx='21' cy='11' r='4' fill='%232f6bff'/%3E%3Ccircle cx='21' cy='21' r='4' fill='%23f4b71b'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="locked">
+  <!-- LOGIN -->
+  <section id="loginScreen" class="login" hidden>
+    <form id="loginForm" class="login-card" novalidate>
+      <div class="brand"><span class="brand-dots" aria-hidden="true"><i></i><i></i><i></i></span>Logo → Prompts <em>Studio</em></div>
+      <p class="muted">Team login</p>
+      <label class="field"><span>Login ID</span><input id="loginId" autocomplete="username" autocapitalize="off" spellcheck="false" required /></label>
+      <label class="field"><span>Password</span><input id="loginPass" type="password" autocomplete="current-password" required /></label>
+      <button class="btn" id="loginBtn" type="submit">Log in</button>
+      <p id="loginErr" class="err" role="alert"></p>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+  <header class="top">
+    <div class="wrap top-in">
+      <div class="brand"><span class="brand-dots" aria-hidden="true"><i></i><i></i><i></i></span>Logo → Prompts <em>Studio</em></div>
+      <div class="top-right">
+        <button id="keyPill" class="pill" type="button"><span class="pill-dot"></span><span id="keyText">No API key</span></button>
+        <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings">⚙</button>
+        <button id="logoutBtn" class="pill" type="button">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <p class="intro">Upload a client's logo. We pick the 3 website colours from it, then Claude writes photo prompts for their template in those colours.</p>
+
+    <!-- 1. LOGO -->
+    <section class="step" aria-labelledby="s1">
+      <h2 id="s1"><span class="n">1</span> Client logo</h2>
+      <label class="drop" id="drop" tabindex="0">
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+        <img id="logoPreview" alt="Uploaded logo" hidden />
+        <span id="dropText"><b>Drop the logo here</b> or click to choose<br /><small>PNG, JPG, WebP or SVG · up to 8 MB · stays in this browser</small></span>
+      </label>
+      <div id="swatchRow" class="swatch-row" hidden>
+        <span class="muted">Colours found in the logo — click one, then click a colour box below to use it:</span>
+        <div id="swatches" class="swatches"></div>
+      </div>
+    </section>
+
+    <!-- 2. COLOURS -->
+    <section class="step" aria-labelledby="s2">
+      <h2 id="s2"><span class="n">2</span> Website colours</h2>
+      <div class="roles">
+        <div class="role" data-role="dark">
+          <div class="role-head"><b>Dark / base</b><span class="muted">header, footer, text</span></div>
+          <div class="role-pick"><input type="color" id="c-dark" value="#14213D" aria-label="Dark colour" /><input type="text" id="h-dark" class="hex" value="#14213D" maxlength="7" aria-label="Dark colour code" /></div>
+          <span class="cname" id="n-dark"></span>
+        </div>
+        <div class="role" data-role="main">
+          <div class="role-head"><b>Main</b><span class="muted">brand colour, highlights</span></div>
+          <div class="role-pick"><input type="color" id="c-main" value="#2450D3" aria-label="Main colour" /><input type="text" id="h-main" class="hex" value="#2450D3" maxlength="7" aria-label="Main colour code" /></div>
+          <span class="cname" id="n-main"></span>
+        </div>
+        <div class="role" data-role="accent">
+          <div class="role-head"><b>Accent / buttons</b><span class="muted">buttons, small touches</span></div>
+          <div class="role-pick"><input type="color" id="c-accent" value="#FF6A13" aria-label="Accent colour" /><input type="text" id="h-accent" class="hex" value="#FF6A13" maxlength="7" aria-label="Accent colour code" /></div>
+          <span class="cname" id="n-accent"></span>
+        </div>
+      </div>
+      <p id="contrastNote" class="note" hidden></p>
+
+      <div class="mock" id="mock" aria-hidden="true">
+        <div class="mock-bar"><span class="mock-logo"></span><span class="mock-nav"></span><span class="mock-btn"></span></div>
+        <div class="mock-hero"><span class="mock-h"></span><span class="mock-h short"></span><span class="mock-cta">Get Free Consultation</span></div>
+        <div class="mock-foot"></div>
+      </div>
+      <div class="admin-copy">
+        <span class="muted">For Admin → Logo &amp; Colours:</span>
+        <code id="adminCodes"></code>
+        <button class="btn-small" id="copyCodes" type="button">Copy</button>
+      </div>
+    </section>
+
+    <!-- 3. TEMPLATE -->
+    <section class="step" aria-labelledby="s3">
+      <h2 id="s3"><span class="n">3</span> Template &amp; client</h2>
+      <div class="row2">
+        <label class="field"><span>Template the client chose</span><select id="tpl"></select></label>
+        <label class="field"><span>Client name <small class="muted">(for the zip name only)</small></span><input id="client" type="text" maxlength="40" placeholder="e.g. Sri Sai Consultants" /></label>
+      </div>
+    </section>
+
+    <!-- 4. PROMPTS -->
+    <section class="step" aria-labelledby="s4">
+      <h2 id="s4"><span class="n">4</span> Photo prompts</h2>
+      <div class="actions">
+        <button class="btn" id="smartBtn" type="button">✨ Write smart prompts with Claude</button>
+        <button class="btn btn-ghost" id="quickBtn" type="button">Quick prompts (no AI)</button>
+        <span id="status" class="status" role="status" aria-live="polite"></span>
+      </div>
+      <div id="result" hidden>
+        <div class="result-head">
+          <div id="mood" class="mood"></div>
+          <div class="result-btns">
+            <button class="btn-small" id="copyAll" type="button">Copy all</button>
+            <button class="btn-small" id="download" type="button">Download .txt</button>
+          </div>
+        </div>
+        <div id="sendInfo" class="info"></div>
+        <ol id="list" class="list"></ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap foot muted">Your logo and API key never leave this browser — except the logo and prompt text sent to Anthropic when you press the Claude button.</footer>
+  </div>
+
+  <!-- KEY / SETTINGS DIALOG -->
+  <dialog id="keyDlg" class="dlg" aria-labelledby="dlgTitle">
+    <form method="dialog" class="dlg-in" id="keyForm" novalidate>
+      <h3 id="dlgTitle">Claude API key</h3>
+
+      <div id="unlockBox" hidden>
+        <p class="muted">A key is saved (encrypted) on this device. Enter your passphrase to unlock it.</p>
+        <label class="field"><span>Passphrase</span><input type="password" id="unlockPass" autocomplete="current-password" /></label>
+        <button class="btn" id="unlockBtn" type="button">Unlock</button>
+        <button class="link" id="forgetBtn" type="button">Forget the saved key</button>
+      </div>
+
+      <div id="setBox" hidden>
+        <p class="muted">Paste a key from <b>console.anthropic.com → API keys</b>. Tip: create a separate key for this tool and set a monthly spend limit.</p>
+        <label class="field"><span>API key</span><input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-..." /></label>
+        <label class="check"><input type="checkbox" id="remember" checked /> Remember on this device (encrypted)</label>
+        <div id="passBox" class="row2">
+          <label class="field"><span>Passphrase <small class="muted">(min 10 characters)</small></span><input type="password" id="pass1" autocomplete="new-password" /></label>
+          <label class="field"><span>Repeat passphrase</span><input type="password" id="pass2" autocomplete="new-password" /></label>
+        </div>
+        <button class="btn" id="saveKeyBtn" type="button">Save &amp; use key</button>
+      </div>
+
+      <div id="readyBox" hidden>
+        <p class="ok">✓ Key unlocked for this session. It locks automatically after 30 minutes without use.</p>
+        <div class="row2">
+          <button class="btn btn-ghost" id="lockBtn" type="button">Lock now</button>
+          <button class="btn btn-ghost" id="replaceBtn" type="button">Use a different key</button>
+        </div>
+      </div>
+
+      <hr />
+      <label class="field"><span>Claude model</span><input id="model" type="text" spellcheck="false" /></label>
+      <p class="muted small">Use the model name from Anthropic's docs. Change it if Anthropic retires this one.</p>
+      <p id="dlgError" class="err" role="alert"></p>
+      <div class="dlg-foot"><button class="btn btn-ghost" value="close" id="closeDlg">Close</button></div>
+    </form>
+  </dialog>
+
+  <script src="auth-config.js"></script>
+  <script src="templates.js"></script>
+  <script src="colors.js"></script>
+  <script src="vault.js"></script>
+  <script src="claude.js"></script>
+  <script src="app.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>

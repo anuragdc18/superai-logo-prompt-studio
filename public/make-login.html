@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Make a new login</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <section class="step">
+      <h2>Make a new login for the Studio</h2>
+      <p class="muted">Type the new login ID and password. Nothing is sent anywhere — the hash is made in this browser. Then paste the line into <code>public/auth-config.js</code> (replace the old <code>window.LOGIN = …</code> line) and push to GitHub.</p>
+      <form id="f" class="row2" novalidate>
+        <label class="field"><span>Login ID</span><input id="u" autocomplete="off" /></label>
+        <label class="field"><span>Password (min 10 characters)</span><input id="p" type="password" autocomplete="new-password" /></label>
+        <button class="btn" type="submit">Make login line</button>
+      </form>
+      <p id="err" class="err"></p>
+      <textarea id="out" class="out" rows="3" readonly hidden></textarea>
+    </section>
+  </main>
+  <script src="make-login.js"></script>
+</body>
+</html>
