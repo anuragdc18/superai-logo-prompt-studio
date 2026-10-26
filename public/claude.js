@@ -43,17 +43,19 @@
       `Template: ${template.label}\nTemplate look: ${template.look}\nGeneral rules: ${rules}\n\n` +
       `Website colours picked from the attached logo:\n- DARK/base: ${colors.dark}\n- MAIN: ${colors.main}\n- ACCENT/buttons: ${colors.accent}\n\n` +
       `Base prompts ([DARK] [MAIN] [ACCENT] mark where colours go):\n${photos}\n\n` +
-      "Look at the logo to judge its mood (traditional, modern, playful, premium...) and reflect that mood in the scenes, then call deliver_prompts.";
+      "Look at the logo to judge its mood (traditional, modern, playful, premium...) and reflect that mood in the scenes, then call the deliver_prompts tool. " +
+      "If you cannot call tools, reply with ONLY a JSON object with the same fields (brand_mood, colors {dark, main, accent}, tips, prompts [{file, prompt}]).";
     const [, mediaType, data] = pngDataUrl.match(/^data:(image\/png);base64,(.+)$/) || [];
     const content = [];
     if (data) content.push({ type: "image", source: { type: "base64", media_type: mediaType, data } });
     content.push({ type: "text", text });
     return {
       model,
-      max_tokens: 8000,
+      max_tokens: 16000,
       system,
+      // no forced tool_choice: newer models reject it. Claude is told to call the tool,
+      // and if it answers in plain text instead we read the JSON from the text.
       tools: [TOOL],
-      tool_choice: { type: "tool", name: "deliver_prompts" },
       messages: [{ role: "user", content }],
     };
   }
@@ -78,9 +80,19 @@
       if ((res.status === 404 || res.status === 400) && /model/i.test(msg)) throw new Error(`Model "${args.model}" isn't available on your API key. Pick another model in ⚙ Settings.`);
       throw new Error(msg);
     }
-    const block = (body.content || []).find((b) => b.type === "tool_use");
-    if (!block) throw new Error("Claude did not return prompts. Try again.");
-    return { result: block.input, usage: body.usage };
+    const block = (body.content || []).find((b) => b.type === "tool_use" && b.name === "deliver_prompts");
+    if (block) return { result: block.input, usage: body.usage };
+    // fallback: JSON written as text
+    const text = (body.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+    const start = text.indexOf("{"), end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        const result = JSON.parse(text.slice(start, end + 1));
+        if (Array.isArray(result.prompts)) return { result, usage: body.usage };
+      } catch {}
+    }
+    if (body.stop_reason === "max_tokens") throw new Error("Claude's answer was cut off (too long). Try again, or use Sonnet in ⚙ Settings.");
+    throw new Error("Claude did not return prompts. Try again.");
   }
 
   window.Claude = { run, buildRequest };
