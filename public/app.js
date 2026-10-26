@@ -8,9 +8,18 @@
   let picked = null; // swatch hex chosen for assigning
   let last = null; // last result { template, items, mood, tips, names }
 
+  /** "opus 5.5", "Claude Sonnet 4.5", "claude_opus_5.5" -> "claude-opus-5-5" */
+  function normalizeModel(v) {
+    let m = String(v || "").trim().toLowerCase().replace(/[\s_.]+/g, "-").replace(/-+/g, "-").replace(/(^-|-$)/g, "");
+    if (!m) return DEFAULT_MODEL;
+    if (/^(opus|sonnet|haiku|fable|mythos)-/.test(m)) m = "claude-" + m;
+    return m;
+  }
+  const PRESETS = ["claude-sonnet-4-5", "claude-opus-5-5"];
+
   const settings = {
-    get model() { try { return localStorage.getItem("lps_model") || DEFAULT_MODEL; } catch { return DEFAULT_MODEL; } },
-    set model(v) { try { localStorage.setItem("lps_model", v); } catch {} },
+    get model() { try { return normalizeModel(localStorage.getItem("lps_model") || DEFAULT_MODEL); } catch { return DEFAULT_MODEL; } },
+    set model(v) { try { localStorage.setItem("lps_model", normalizeModel(v)); } catch {} },
   };
 
   // ---------- templates ----------
@@ -233,14 +242,26 @@
   function openKeyDialog(forceSet) {
     refreshKeyUI();
     if (forceSet) { $("unlockBox").hidden = true; $("readyBox").hidden = true; $("setBox").hidden = false; }
-    $("model").value = settings.model;
+    const m = settings.model;
+    $("modelPick").value = PRESETS.includes(m) ? m : "custom";
+    $("model").value = m;
+    $("modelCustomBox").hidden = PRESETS.includes(m);
     dlg.showModal();
     const first = dlg.querySelector("section:not([hidden]) input, div:not([hidden]) > label > input[type=password]");
     if (first) first.focus();
   }
   $("keyPill").addEventListener("click", () => openKeyDialog());
   $("settingsBtn").addEventListener("click", () => openKeyDialog());
-  $("model").addEventListener("change", (e) => (settings.model = e.target.value.trim() || DEFAULT_MODEL));
+  $("modelPick").addEventListener("change", (e) => {
+    const custom = e.target.value === "custom";
+    $("modelCustomBox").hidden = !custom;
+    if (custom) $("model").focus();
+    else settings.model = e.target.value;
+  });
+  $("model").addEventListener("change", (e) => {
+    settings.model = e.target.value;
+    e.target.value = settings.model; // show the corrected ID
+  });
   $("remember").addEventListener("change", (e) => ($("passBox").hidden = !e.target.checked));
   $("saveKeyBtn").addEventListener("click", async () => {
     const key = $("apiKey").value.trim(), remember = $("remember").checked, p1 = $("pass1").value, p2 = $("pass2").value;

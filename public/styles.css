@@ -114,3 +114,22 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-size: 15px; lin
 .login-card p.muted { margin: 0 0 6px; }
 .login-card .btn { margin-top: 6px; }
 .out { width: 100%; margin-top: 12px; padding: 12px; border: 1.5px solid var(--line); border-radius: 10px; font: 13px ui-monospace, Consolas, monospace; }
+
+/* narrow windows: keep the header on one line, no sideways scroll */
+html, body { overflow-x: hidden; }
+.brand { white-space: nowrap; min-width: 0; }
+.top-in { gap: 8px; }
+.pill { white-space: nowrap; }
+@media (max-width: 720px) {
+  .brand { font-size: 15px; }
+  .brand em { display: none; }
+  .pill { padding: 0 10px; font-size: 12.5px; }
+}
+@media (max-width: 460px) {
+  .brand-dots { display: none; }
+  #keyText { display: none; }
+  .pill { width: 38px; padding: 0; justify-content: center; }
+  #logoutBtn { width: auto; padding: 0 10px; }
+}
+.drop img, .mock, .item p { max-width: 100%; }
+.item p, .mood, .info { overflow-wrap: anywhere; }

@@ -75,7 +75,7 @@
       const msg = body?.error?.message || `HTTP ${res.status}`;
       if (res.status === 401) throw new Error("The API key was rejected. Check it in Settings → API key.");
       if (res.status === 429) throw new Error("Rate limit or spend limit reached on your Anthropic account. Try again later.");
-      if (res.status === 404 && /model/i.test(msg)) throw new Error(`Model not found: "${args.model}". Change it in Settings.`);
+      if ((res.status === 404 || res.status === 400) && /model/i.test(msg)) throw new Error(`Model "${args.model}" isn't available on your API key. Pick another model in ⚙ Settings.`);
       throw new Error(msg);
     }
     const block = (body.content || []).find((b) => b.type === "tool_use");
